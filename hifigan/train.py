@@ -350,12 +350,12 @@ def main():
 
     # Пути к данным (файлы списков и директории)
     # input_wavs_dir - ДОЛЖЕН указывать на директорию, где ЛЕЖАТ WAV ФАЙЛЫ
-    parser.add_argument('--input_wavs_dir', default='LJSpeech-1.1/wavs', help='Path to input wavs directory (used by MelDataset and get_dataset_filelist to find audio)')
+    parser.add_argument('--input_wavs_dir', default='dataset/wavs', help='Path to input wavs directory (used by MelDataset and get_dataset_filelist to find audio)')
     # input_mels_dir - ДОЛЖЕН указывать на директорию, где ЛЕЖАТ СГЕНЕРИРОВАННЫЕ МЕЛЫ для fine-tuning
     parser.add_argument('--input_mels_dir', default='ft_dataset', help='Path to input mels directory (used by MelDataset in fine-tuning mode)')
     # input_training_file и input_validation_file - пути к ФАЙЛАМ списков WAV/Mel + транскрипция
-    parser.add_argument('--input_training_file', default='LJSpeech-1.1/training.txt', help='Path to the training file list (.txt or .csv)')
-    parser.add_argument('--input_validation_file', default='LJSpeech-1.1/validation.txt', help='Path to the validation file list (.txt or .csv)')
+    parser.add_argument('--input_training_file', default='dataset/train.csv', help='Path to the training file list (.csv)')
+    parser.add_argument('--input_validation_file', default='dataset/validation.csv', help='Path to the validation file list (.csv)')
 
 
     # checkpoint_path - путь к ИСХОДНОМУ чекпоинту для fine-tuning (если есть)

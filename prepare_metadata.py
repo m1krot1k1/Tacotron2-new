@@ -89,7 +89,7 @@ def prepare_and_split_metadata(trans_dir, audio_dir, dataset_dir, metadata_file_
                 print(f"[{i}/{total_files}] ПРОПУСК {file}: пустая или некорректная транскрипция после нормализации")
                 continue # Пропускаем, если нормализованный текст пуст
 
-            output_wav_path = os.path.join(wavs_dir, wav_file) # Путь куда копируем WAV в dataset/wavs
+            output_wav_path = os.path.join("dataset/wavs", wav_file) # Путь куда копируем WAV в dataset/wavs
             try:
                 # Копируем файл в директорию датасета/wavs
                 shutil.copy2(input_wav_path, output_wav_path)

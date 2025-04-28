@@ -870,6 +870,61 @@ save_final_model() {
     # save_final_model end
 }
 
+fine_tune_hifigan() {
+    # fine_tune_hifigan start
+    print_info "Запуск обучения HiFi-GAN (файнтюнинг)..."
+
+    if ! setup_virtual_env; then
+        print_error "Не удалось настроить виртуальное окружение. Отмена обучения HiFi-GAN."
+        return 1
+    fi
+
+    HIFIGAN_DIR="$REPO_DIR/hifigan"
+    HIFIGAN_TRAIN_SCRIPT="$HIFIGAN_DIR/train.py"
+
+    if [ ! -d "$HIFIGAN_DIR" ]; then
+        print_error "Директория HiFi-GAN не найдена: $HIFIGAN_DIR."
+        print_info "Убедитесь, что репозиторий содержит папку HiFi-GAN."
+        return 1
+    fi
+
+    if [ ! -f "$HIFIGAN_TRAIN_SCRIPT" ]; then
+        print_error "Скрипт обучения HiFi-GAN не найден: $HIFIGAN_TRAIN_SCRIPT."
+        return 1
+    fi
+
+    if [ ! -f "$TRAIN_METADATA_FILE" ] || [ ! -s "$TRAIN_METADATA_FILE" ]; then
+        print_error "Файл метаданных train.csv не найден или пуст: $TRAIN_METADATA_FILE."
+        print_info "Пожалуйста, сначала создайте датасет (опция 6)."
+        return 1
+    fi
+
+    HIFIGAN_OUTPUT_DIR="$HIFIGAN_DIR/output"
+    mkdir -p "$HIFIGAN_OUTPUT_DIR"
+
+    print_info "Запуск процесса обучения HiFi-GAN..."
+    cd "$HIFIGAN_DIR" || { print_error "Не удалось перейти в директорию HiFi-GAN: $HIFIGAN_DIR."; return 1; }
+
+    python train.py --input_wavs_dir "$DATASET_DIR/wavs" \
+                    --input_training_file "$TRAIN_METADATA_FILE" \
+                    --input_validation_file "$VALIDATION_METADATA_FILE" \
+                    --checkpoint_path "$HIFIGAN_OUTPUT_DIR" &> >(tee -a "$HIFIGAN_OUTPUT_DIR/train.log")
+
+    HIFIGAN_TRAIN_STATUS=$?
+
+    cd "$WORK_DIR" || { print_error "Не удалось вернуться в рабочую директорию: $WORK_DIR."; return 1; }
+
+    if [ $HIFIGAN_TRAIN_STATUS -eq 0 ]; then
+        print_success "Обучение HiFi-GAN успешно завершено. Результаты сохранены в: $HIFIGAN_OUTPUT_DIR"
+    else
+        print_error "Во время обучения HiFi-GAN произошла ошибка. Код ошибки: $HIFIGAN_TRAIN_STATUS"
+        print_info "Проверьте логи в директории $HIFIGAN_OUTPUT_DIR/train.log для получения дополнительной информации."
+    fi
+
+    return $HIFIGAN_TRAIN_STATUS
+    # fine_tune_hifigan end
+}
+
 do_all_steps() {
     # do_all_steps start
     print_info "Запуск всех шагов последовательно..."
@@ -880,7 +935,8 @@ do_all_steps() {
     process_audio_files && \
     transcribe_audio && \
     create_dataset && \
-    train_model
+    train_model && \
+    fine_tune_hifigan
 
     if [ $? -eq 0 ]; then
         save_final_model
