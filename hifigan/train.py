@@ -362,7 +362,7 @@ def main():
     parser.add_argument('--checkpoint_path', default=None, help='Path to an initial checkpoint to fine-tune from (e.g., a pretrained generator model file)')
 
     # config - путь к файлу конфигурации
-    parser.add_argument('--config', default='', required=True, help='Path to the configuration file (.json)')
+    parser.add_argument('--config', default='UNIVERSAL_V1/config.json', help='Path to the configuration file (.json)')
 
     # training_epochs - количество эпох для обучения
     parser.add_argument('--training_epochs', default=3100, type=int, help='Number of training epochs')
