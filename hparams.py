@@ -74,10 +74,10 @@ def create_hparams(hparams_string=None, verbose=False):
         decoder_rnn_dim=1024,               # Размер скрытого состояния LSTM в декодере
         prenet_dim=256,                     # Размерность слоев Prenet
         max_decoder_steps=1500,             # Максимальное кол-во шагов декодера (ограничивает макс. длину аудио ~17 сек)
-        gate_threshold=0.5,                 # Порог для stop-токена (предсказание конца генерации)
+        gate_threshold=0.3,                 # Порог для stop-токена (предсказание конца генерации)
         p_attention_dropout=0.1,            # Dropout для attention LSTM
         p_decoder_dropout=0.1,              # Dropout для decoder LSTM
-        p_teacher_forcing=1.0,              # Вероятность использования истинного Mel-кадра (teacher forcing). 1.0 - стандарт для начала.
+        p_teacher_forcing=0.95,              # Вероятность использования истинного Mel-кадра (teacher forcing). 1.0 - стандарт для начала.
 
         # Attention
         attention_rnn_dim=1024,             # Размер attention LSTM (часто равен decoder_rnn_dim)
@@ -112,14 +112,14 @@ def create_hparams(hparams_string=None, verbose=False):
         # Optimization Hyperparameters #
         ################################
         use_saved_learning_rate=False, # Ставьте True, только если продолжаете обучение с чекпоинта и хотите сохранить LR из него
-        learning_rate=1e-3,          # НАЧАЛЬНАЯ скорость обучения.
+        learning_rate=1e-4,          # НАЧАЛЬНАЯ скорость обучения.
                                      # !!! ВОЗМОЖНО, ПОТРЕБУЕТСЯ УМЕНЬШИТЬ (до 5e-4, 2e-4, 1e-4) !!!
                                      # если выравнивание (alignment) долго не сходится (остается размытым).
                                      # Рассмотрите использование LR Schedulers (часто настраиваются в train.py).
         weight_decay=1e-6,           # L2 регуляризация (предотвращает переобучение)
         grad_clip_thresh=1.0,        # Обрезка градиента (предотвращает "взрыв" градиентов)
         # !!! ОПТИМИЗИРОВАННЫЙ batch_size для 16GB VRAM + FP16 !!!
-        batch_size=48,               # НАЧАЛЬНОЕ ЗНАЧЕНИЕ. Мониторьте VRAM!
+        batch_size=32,               # НАЧАЛЬНОЕ ЗНАЧЕНИЕ. Мониторьте VRAM!
                                      # Если память используется < 80%, можно ПОПРОБОВАТЬ УВЕЛИЧИТЬ (56, 64...).
                                      # Если ошибка "Out of Memory", УМЕНЬШАЙТЕ (40, 32...).
         mask_padding=True,           # Использовать маскирование для последовательностей разной длины в батче (обязательно)
