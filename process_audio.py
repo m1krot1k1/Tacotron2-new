@@ -6,8 +6,9 @@ import glob
 import subprocess # Импортируем модуль для запуска внешних команд
 import math # Импортируем math для математических операций
 
-# Определяем порог размера файла для предварительного разбиения (например, 3.5 GB)
-LARGE_FILE_THRESHOLD_GB = 3.5
+# Определяем порог размера файла для предварительного разбиения (например, 0.1 GB)
+# Понижено для обхода возможного некорректного определения размера больших файлов pydub
+LARGE_FILE_THRESHOLD_GB = 0.1
 LARGE_FILE_THRESHOLD_BYTES = LARGE_FILE_THRESHOLD_GB * 1024 * 1024 * 1024
 
 # Определяем примерную длительность временных чанков при разбиении больших файлов (в секундах)
@@ -148,18 +149,37 @@ def process_and_split_audio_files(audio_dir, processed_dir, chunk_length_sec=20,
                 continue
 
             file_size = os.path.getsize(input_path)
+            print(f"[DEBUG] Размер файла {file}: {file_size} байт ({file_size / (1024*1024*1024):.2f} GB). Порог: {LARGE_FILE_THRESHOLD_GB} GB.") # Отладочное сообщение
             files_to_process_with_pydub = [] # Список файлов (оригинальный или временные чанки) для обработки pydub
 
+            # Изменено условие для принудительного использования ffmpeg для большинства файлов
             if file_size > LARGE_FILE_THRESHOLD_BYTES:
                 print(f"[INFO] Файл {file} ({file_size / (1024*1024*1024):.2f} GB) превышает порог {LARGE_FILE_THRESHOLD_GB} GB. Разбиение с помощью ffmpeg.")
                 # Разбиваем на временные чанки TEMP_CHUNK_DURATION_SECONDS
                 temp_chunks = split_large_mp3_with_ffmpeg(input_path, temp_dir, TEMP_CHUNK_DURATION_SECONDS)
+                print(f"[DEBUG] Результат split_large_mp3_with_ffmpeg для {file}: {temp_chunks}") # Отладочное сообщение
                 if temp_chunks is None:
                     print(f"[ERROR] Не удалось разбить большой файл {file} на временные чанки. Пропуск оригинального файла.")
                     continue # Пропускаем этот оригинальный файл, если разбиение не удалось
                 files_to_process_with_pydub.extend(temp_chunks)
             else:
-                files_to_process_with_pydub.append(input_path)
+                # Если файл меньше порога (или если порог очень низкий, как сейчас),
+                # мы все равно можем попробовать разбить его через ffmpeg,
+                # или передать напрямую в pydub, если уверены, что pydub справится.
+                # В данном случае, чтобы обойти ошибку pydub, мы принудительно
+                # используем ffmpeg, если размер больше 0.
+                if file_size > 0: # Обрабатываем ненулевые файлы через ffmpeg
+                     print(f"[INFO] Файл {file} ({file_size / (1024*1024*1024):.2f} GB) меньше порога {LARGE_FILE_THRESHOLD_GB} GB, но будет обработан через ffmpeg для обхода ошибки pydub.")
+                     temp_chunks = split_large_mp3_with_ffmpeg(input_path, temp_dir, TEMP_CHUNK_DURATION_SECONDS) # Используем ту же длительность чанка
+                     print(f"[DEBUG] Результат split_large_mp3_with_ffmpeg для {file}: {temp_chunks}") # Отладочное сообщение
+                     if temp_chunks is None:
+                         print(f"[ERROR] Не удалось разбить файл {file} на временные чанки с помощью ffmpeg. Пропуск оригинального файла.")
+                         continue # Пропускаем этот оригинальный файл, если разбиение не удалось
+                     files_to_process_with_pydub.extend(temp_chunks)
+                else:
+                    print(f"[WARNING] Файл {file} имеет нулевой размер. Пропуск.")
+                    continue
+
 
             original_file_produced_chunks = False # Флаг, указывающий, был ли этот оригинальный файл успешно обработан (созданы чанки)
 
@@ -170,6 +190,7 @@ def process_and_split_audio_files(audio_dir, processed_dir, chunk_length_sec=20,
 
                 try:
                     # Загрузка аудио с помощью pydub (теперь для меньших файлов или чанков)
+                    # Эта часть выполняется после разбиения ffmpeg, поэтому должна работать
                     audio = AudioSegment.from_file(current_input_path)
 
                     # Нормализация громкости
@@ -237,10 +258,10 @@ def process_and_split_audio_files(audio_dir, processed_dir, chunk_length_sec=20,
 
         finally:
             # Очистка временных чанков ffmpeg для этого оригинального файла
-            if file_size > LARGE_FILE_THRESHOLD_BYTES:
+            # Проверяем, были ли созданы временные чанки для этого файла
+            temp_chunks_to_clean = glob.glob(os.path.join(temp_dir, f"{base_name}_temp_chunk_*.mp3"))
+            if temp_chunks_to_clean:
                  print(f"[INFO] Очистка временных чанков для {file} из {temp_dir}")
-                 # Ищем временные чанки, созданные для этого конкретного оригинального файла
-                 temp_chunks_to_clean = glob.glob(os.path.join(temp_dir, f"{base_name}_temp_chunk_*.mp3"))
                  for temp_chunk in temp_chunks_to_clean:
                      try:
                          if os.path.exists(temp_chunk):
